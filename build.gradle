@@ -1,0 +1,41 @@
+plugins {
+    id 'java-library'
+}
+
+if (gradle.gradleVersion != '9.3.1') {
+    throw new GradleException('Use Gradle 9.3.1.')
+}
+
+group = 'com.stardataparadise'
+version = '0.1.0'
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(17)
+    }
+}
+
+layout.buildDirectory = layout.projectDirectory.dir('out/build')
+
+tasks.named('jar', Jar) {
+    manifest {
+        attributes('Implementation-Version': project.version)
+    }
+}
+
+sourceSets {
+    smoke {
+        compileClasspath += files(tasks.named('jar'))
+    }
+}
+
+tasks.register('smoke', JavaExec) {
+    dependsOn tasks.named('smokeClasses')
+    classpath = sourceSets.smoke.output + files(tasks.named('jar'))
+    mainClass = 'com.stardataparadise.sdk.smoke.Smoke'
+    javaLauncher = javaToolchains.launcherFor(java.toolchain)
+}
+
+tasks.named('check') {
+    dependsOn tasks.named('smoke')
+}
