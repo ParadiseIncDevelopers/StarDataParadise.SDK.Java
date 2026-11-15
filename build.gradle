@@ -1,32 +1,90 @@
+import java.security.MessageDigest
+
 plugins {
     id 'java-library'
+    id 'maven-publish'
 }
 
-if (gradle.gradleVersion != '9.3.1') {
-    throw new GradleException('Use Gradle 9.3.1.')
-}
+if (gradle.gradleVersion != '9.3.1') throw new GradleException('Use Gradle 9.3.1.')
 
 group = 'com.stardataparadise'
-version = '0.1.0'
+version = '0.2.0'
+layout.buildDirectory = layout.projectDirectory.dir('out/build')
 
 java {
-    toolchain {
-        languageVersion = JavaLanguageVersion.of(17)
+    toolchain { languageVersion = JavaLanguageVersion.of(17) }
+    withSourcesJar()
+    withJavadocJar()
+}
+
+def dependencyRoot = providers.gradleProperty('sdpDependencyDir')
+        .orElse(providers.environmentVariable('SDP_SDK_DEPS'))
+        .orNull
+if (dependencyRoot == null) throw new GradleException('Set SDP_SDK_DEPS to the directory with verified JARs.')
+
+def locked = { String name, String digest ->
+    def jar = new File(dependencyRoot, name)
+    if (!jar.isFile()) throw new GradleException("Missing verified dependency " + name)
+    def sha = MessageDigest.getInstance('SHA-256').digest(jar.bytes).encodeHex().toString()
+    if (sha != digest) throw new GradleException("Dependency checksum mismatch for " + name)
+    return jar
+}
+
+def gsonJar = locked('gson-2.13.2.jar', 'dd0ce1b55a3ed2080cb70f9c655850cda86c206862310009dcb5e5c95265a5e0')
+def junitJar = locked('junit-platform-console-standalone-1.13.4.jar',
+        '3fdfc37e29744a9a67dd5365e81467e26fbde0b7aa204e6f8bbe79eeaa7ae892')
+
+repositories {
+    flatDir {
+        dirs dependencyRoot
+        content { includeModule('com.google.code.gson', 'gson') }
     }
 }
 
-layout.buildDirectory = layout.projectDirectory.dir('out/build')
+dependencies {
+    api 'com.google.code.gson:gson:2.13.2'
+    testImplementation files(junitJar)
+    testRuntimeOnly files(junitJar)
+}
+
+tasks.withType(JavaCompile).configureEach { options.encoding = 'UTF-8' }
+tasks.withType(Javadoc).configureEach {
+    options.encoding = 'UTF-8'
+    options.addStringOption('Xdoclint:none', '-quiet')
+}
+
+tasks.withType(AbstractArchiveTask).configureEach {
+    preserveFileTimestamps = false
+    reproducibleFileOrder = true
+}
 
 tasks.named('jar', Jar) {
     manifest {
-        attributes('Implementation-Version': project.version)
+        attributes('Implementation-Version': project.version,
+                'Implementation-Title': 'StarDataParadise JDBC Driver',
+                'Automatic-Module-Name': 'com.stardataparadise.sdk')
     }
+}
+
+tasks.named('test') {
+    useJUnitPlatform()
+    testLogging { events 'passed', 'failed', 'skipped' }
 }
 
 sourceSets {
     smoke {
         compileClasspath += files(tasks.named('jar'))
     }
+    installed {
+        compileClasspath += files(tasks.named('jar'), gsonJar)
+        runtimeClasspath += files(tasks.named('jar'), gsonJar)
+    }
+}
+
+tasks.register('installedConsumerJar', Jar) {
+    dependsOn tasks.named('installedClasses')
+    from sourceSets.installed.output
+    archiveClassifier = 'installed-consumer'
 }
 
 tasks.register('smoke', JavaExec) {
@@ -36,6 +94,23 @@ tasks.register('smoke', JavaExec) {
     javaLauncher = javaToolchains.launcherFor(java.toolchain)
 }
 
-tasks.named('check') {
-    dependsOn tasks.named('smoke')
+publishing {
+    publications {
+        sdk(MavenPublication) {
+            from components.java
+            artifactId = 'stardataparadise-jdbc'
+            pom {
+                name = 'StarDataParadise JDBC'
+                description = 'Java 17 JDBC driver for StarDataParadise Server wire v1'
+            }
+        }
+    }
+    repositories {
+        maven {
+            name = 'sdkArtifacts'
+            url = layout.projectDirectory.dir('out/maven')
+        }
+    }
 }
+
+tasks.named('check') { dependsOn tasks.named('installedConsumerJar'), tasks.named('smoke') }
