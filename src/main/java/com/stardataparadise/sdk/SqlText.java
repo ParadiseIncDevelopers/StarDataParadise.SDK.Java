@@ -6,7 +6,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 
-record SqlText(String wire, List<Integer> positions, Kind kind) {
+record SqlText(String wire, List<Integer> positions, Kind kind, String verb) {
     enum Kind { READ, ROUTINE, EXTENSION, WRITE }
 
     static SqlText parse(String input, boolean callable) throws SQLException {
@@ -76,7 +76,14 @@ record SqlText(String wire, List<Integer> positions, Kind kind) {
             case "CREATE", "ALTER" -> next.equals("MODEL") ? Kind.EXTENSION : Kind.WRITE;
             default -> Kind.WRITE;
         };
-        return new SqlText(output.toString(), List.copyOf(positions), kind);
+        return new SqlText(output.toString(), List.copyOf(positions), kind, verb);
+    }
+
+    boolean isBasicDml() {
+        return switch (verb) {
+            case "INSERT", "UPDATE", "DELETE" -> true;
+            default -> false;
+        };
     }
 
     int parameters() { return positions.size(); }

@@ -90,7 +90,7 @@ public final class StarDataParadiseDriver implements Driver {
 
     @Override public boolean acceptsURL(String url) { return url != null && url.startsWith(PREFIX); }
     @Override public int getMajorVersion() { return 0; }
-    @Override public int getMinorVersion() { return 2; }
+    @Override public int getMinorVersion() { return 3; }
     @Override public boolean jdbcCompliant() { return false; }
     @Override public Logger getParentLogger() throws SQLFeatureNotSupportedException {
         throw ValueCodec.unsupported("driver logging");

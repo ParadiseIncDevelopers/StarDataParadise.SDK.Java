@@ -17,6 +17,8 @@ import java.util.Map;
 import java.util.concurrent.Executor;
 
 final class JdbcSession implements InvocationHandler {
+    private static final String FULL_SQL = "sql_crud_v1";
+    private static final String DURABLE_TRANSACTIONS = "wire_sql_transactions_v1";
     private final Wire wire;
     final SdpConnection handle;
     final String url;
@@ -58,7 +60,7 @@ final class JdbcSession implements InvocationHandler {
 
     static SdpConnection connect(Wire wire, String url, String user, String password,
                                  int connectTimeout, int queryTimeout) throws SQLException {
-        var hello = wire.request("hello", Wire.object("client", "StarDataParadise JDBC 0.2.0"),
+        var hello = wire.request("hello", Wire.object("client", "StarDataParadise JDBC 0.3.0-preview.1"),
                 wire, connectTimeout, null);
         var auth = Wire.object("username", user, "password", password);
         try {
@@ -146,9 +148,9 @@ final class JdbcSession implements InvocationHandler {
             case "setCatalog" -> { if (!"main".equals(args[0])) throw ValueCodec.unsupported(name); yield null; }
             case "getSchema" -> "public";
             case "setSchema" -> { if (!"public".equals(args[0])) throw ValueCodec.unsupported(name); yield null; }
-            case "getTransactionIsolation" -> Connection.TRANSACTION_SERIALIZABLE;
+            case "getTransactionIsolation" -> transactionIsolation();
             case "setTransactionIsolation" -> {
-                if ((Integer) args[0] != Connection.TRANSACTION_SERIALIZABLE) throw ValueCodec.unsupported(name);
+                if (!supportsIsolation((Integer) args[0])) throw ValueCodec.unsupported(name);
                 yield null;
             }
             case "getHoldability" -> ResultSet.CLOSE_CURSORS_AT_COMMIT;
@@ -191,6 +193,17 @@ final class JdbcSession implements InvocationHandler {
     void requireOpen() throws SQLException { if (wire.isClosed()) throw JdbcProxy.closed("Connection"); }
     boolean isClosed() { return wire.isClosed(); }
     void cancel(Object owner) { wire.cancel(owner); }
+    void closeWire() { wire.close(); }
+
+    boolean supportsFullSql() { return capabilities.getOrDefault(FULL_SQL, false); }
+    boolean durableWireTransactions() { return capabilities.getOrDefault(DURABLE_TRANSACTIONS, false); }
+    boolean supportsTransactions() { return supportsFullSql() || durableWireTransactions(); }
+    int transactionIsolation() {
+        return supportsTransactions() ? Connection.TRANSACTION_SERIALIZABLE : Connection.TRANSACTION_NONE;
+    }
+    boolean supportsIsolation(int level) {
+        return supportsTransactions() && level == Connection.TRANSACTION_SERIALIZABLE;
+    }
 
     JsonObject call(String op, JsonObject body, Object owner, int seconds, String token) throws SQLException {
         int timeout = networkTimeout > 0 ? networkTimeout : baseTimeout;
@@ -204,10 +217,14 @@ final class JdbcSession implements InvocationHandler {
         return call(op, body, this, 0, null);
     }
 
-    void beforeStatement() throws SQLException {
+    void beforeStatement(SqlText sql) throws SQLException {
         requireOpen();
         if (cursor != null) throw JdbcProxy.state("Close the current result before executing another statement");
-        if (!capabilities.getOrDefault("sql_crud_v1", false)) throw ValueCodec.unsupported("Server SQL");
+        if (supportsFullSql()) return;
+        if (durableWireTransactions() && ("SELECT".equals(sql.verb()) || sql.isBasicDml())) return;
+        if (sql.kind() == SqlText.Kind.READ && autoCommit && capabilities.getOrDefault("wire_sql_basic_v1", false))
+            return;
+        throw ValueCodec.unsupported("Server SQL");
     }
 
     boolean start(SqlText.Kind kind, Object owner, int timeout) throws SQLException {
@@ -245,7 +262,27 @@ final class JdbcSession implements InvocationHandler {
         if (!transaction) return;
         String token = Wire.token();
         try {
-            call("tx_commit", Wire.object("request_token", token), owner, timeout, token);
+            var reply = call("tx_commit", Wire.object("request_token", token), owner, timeout, token);
+            if (durableWireTransactions()
+                    && (!"committed".equals(Wire.requiredString(reply, "status"))
+                        || Wire.requiredString(reply, "lsn").isEmpty()))
+                throw new IOException("Invalid commit receipt");
+        } catch (IOException invalidReceipt) {
+            closeWire();
+            throw Wire.malformed(token);
+        } catch (SdpException failedCommit) {
+            if (durableWireTransactions()) {
+                if (failedCommit.isOutcomeUnknown()) closeWire();
+                else if (!isClosed()) {
+                    try {
+                        call("tx_rollback", new JsonObject(), owner, timeout, null);
+                    } catch (SQLException failedRollback) {
+                        failedCommit.addSuppressed(failedRollback);
+                        closeWire();
+                    }
+                }
+            }
+            throw failedCommit;
         } finally {
             clearTransaction();
         }
@@ -285,6 +322,7 @@ final class JdbcSession implements InvocationHandler {
 
     private Savepoint savepoint(String label) throws SQLException {
         if (autoCommit) throw JdbcProxy.state("Savepoint requires manual transaction mode");
+        if (!supportsTransactions()) throw ValueCodec.unsupported("Server transactions");
         if (cursor != null) throw JdbcProxy.state("Close the current result before creating a savepoint");
         if (label != null && !label.matches("[a-zA-Z0-9_]{1,64}")) throw Wire.invalid("Invalid savepoint name");
         if (!transaction) begin(this, 0);
@@ -308,7 +346,8 @@ final class JdbcSession implements InvocationHandler {
 
     private SdpConnection.Outcome outcome(String token) throws SQLException {
         if (token == null || !token.matches("[0-9a-f]{32}")) throw Wire.invalid("Invalid outcome token");
-        var result = simple("tx_outcome", Wire.object("request_token", token), "sql_crud_v1");
+        var result = simple("tx_outcome", Wire.object("request_token", token),
+                supportsFullSql() ? FULL_SQL : DURABLE_TRANSACTIONS);
         try {
             return switch (Wire.requiredString(result, "status")) {
                 case "committed" -> new SdpConnection.Outcome(SdpConnection.OutcomeStatus.COMMITTED,

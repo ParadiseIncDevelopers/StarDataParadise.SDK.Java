@@ -1,6 +1,5 @@
 package com.stardataparadise.sdk;
 
-import java.sql.Connection;
 import java.sql.DatabaseMetaData;
 import java.sql.ParameterMetaData;
 import java.sql.ResultSet;
@@ -29,9 +28,9 @@ final class JdbcMetadata {
                 case "getDatabaseMajorVersion" -> version(session.serverVersion, 0);
                 case "getDatabaseMinorVersion" -> version(session.serverVersion, 1);
                 case "getDriverName" -> "StarDataParadise JDBC";
-                case "getDriverVersion" -> "0.2.0";
+                case "getDriverVersion" -> "0.3.0-preview.1";
                 case "getDriverMajorVersion" -> 0;
-                case "getDriverMinorVersion" -> 2;
+                case "getDriverMinorVersion" -> 3;
                 case "getJDBCMajorVersion" -> 4;
                 case "getJDBCMinorVersion" -> 3;
                 case "getSQLStateType" -> DatabaseMetaData.sqlStateSQL;
@@ -41,13 +40,13 @@ final class JdbcMetadata {
                 case "getCatalogTerm" -> "database";
                 case "getSchemaTerm" -> "schema";
                 case "getProcedureTerm" -> "procedure";
-                case "getDefaultTransactionIsolation" -> Connection.TRANSACTION_SERIALIZABLE;
-                case "supportsTransactions", "supportsSavepoints", "supportsMultipleResultSets",
-                     "supportsStoredProcedures", "nullsAreSortedAtEnd", "storesLowerCaseIdentifiers",
-                     "storesMixedCaseQuotedIdentifiers" -> true;
+                case "getDefaultTransactionIsolation" -> session.transactionIsolation();
+                case "supportsTransactions", "supportsSavepoints" -> session.supportsTransactions();
+                case "supportsMultipleResultSets", "supportsStoredProcedures" -> session.supportsFullSql();
+                case "nullsAreSortedAtEnd", "storesLowerCaseIdentifiers", "storesMixedCaseQuotedIdentifiers" -> true;
                 case "supportsBatchUpdates", "supportsGetGeneratedKeys", "supportsMultipleOpenResults",
                      "supportsOpenCursorsAcrossCommit", "supportsOpenCursorsAcrossRollback", "isReadOnly" -> false;
-                case "supportsTransactionIsolationLevel" -> (Integer) args[0] == Connection.TRANSACTION_SERIALIZABLE;
+                case "supportsTransactionIsolationLevel" -> session.supportsIsolation((Integer) args[0]);
                 case "supportsResultSetType" -> (Integer) args[0] == ResultSet.TYPE_FORWARD_ONLY;
                 case "supportsResultSetConcurrency" -> (Integer) args[0] == ResultSet.TYPE_FORWARD_ONLY
                         && (Integer) args[1] == ResultSet.CONCUR_READ_ONLY;

@@ -335,7 +335,8 @@ final class Wire implements AutoCloseable {
         return new SdpException(detail, "22023", 1012, false, false, null, null, 0, 0);
     }
 
-    static SdpException malformed() { return transport(1001, null); }
+    static SdpException malformed() { return malformed(null); }
+    static SdpException malformed(String token) { return transport(1001, token); }
 
     private static SdpException transport(int code, String token) {
         String state = switch (code) {

@@ -167,8 +167,10 @@ final class JdbcStatement implements InvocationHandler {
         boolean own = false;
         String statementId = null;
         SQLException failure = null;
+        String unverifiedReceipt = null;
+        boolean writeAcknowledged = false;
         try {
-            session.beforeStatement();
+            session.beforeStatement(sql);
             var types = new JsonObject();
             var values = new JsonObject();
             var outOnly = new java.util.HashSet<Integer>();
@@ -193,6 +195,11 @@ final class JdbcStatement implements InvocationHandler {
             String token = session.autoCommit() && sql.kind() == SqlText.Kind.WRITE ? Wire.token() : null;
             if (token != null) body.addProperty("request_token", token);
             var execution = session.call("execute", body, this, queryTimeout, token);
+            if (token != null && session.durableWireTransactions()) {
+                unverifiedReceipt = token;
+                if (execution.has("result_id") || Wire.requiredString(execution, "lsn").isEmpty())
+                    throw new IOException("Invalid write receipt");
+            }
             if (execution.has("result_id")) {
                 rows = new ServerRows(session, this, execution, own,
                         sql.kind() == SqlText.Kind.ROUTINE || sql.kind() == SqlText.Kind.READ && callable);
@@ -204,18 +211,32 @@ final class JdbcStatement implements InvocationHandler {
                 }
             } else {
                 updateCount = Wire.requiredInteger(execution, "affected_rows");
+                if (unverifiedReceipt != null && updateCount < 0) throw new IOException("Invalid update count");
+                writeAcknowledged = unverifiedReceipt != null;
                 if (!registered.isEmpty()) throw JdbcProxy.state("Procedure did not return registered OUT values");
                 if (own) session.finishOwned(true, this, queryTimeout);
             }
         } catch (IOException | RuntimeException violation) {
-            failure = Wire.malformed();
+            if (unverifiedReceipt != null && !writeAcknowledged) {
+                session.closeWire();
+                failure = Wire.malformed(unverifiedReceipt);
+            } else {
+                failure = Wire.malformed();
+            }
         } catch (SQLException sqlFailure) {
+            if (session.durableWireTransactions() && sqlFailure instanceof SdpException wireFailure
+                    && wireFailure.isOutcomeUnknown()) session.closeWire();
             failure = sqlFailure;
         } finally {
             if (statementId != null && !session.isClosed()) {
                 try { session.call("statement_close", Wire.object("statement_id", statementId), this,
                         queryTimeout, null); }
-                catch (SQLException closing) { if (failure == null) failure = closing; else failure.addSuppressed(closing); }
+                catch (SQLException closing) {
+                    // A cleanup failure must not mask a committed write and invite a duplicate.
+                    if (writeAcknowledged) session.closeWire();
+                    else if (failure == null) failure = closing;
+                    else failure.addSuppressed(closing);
+                }
             }
         }
         if (failure != null) {

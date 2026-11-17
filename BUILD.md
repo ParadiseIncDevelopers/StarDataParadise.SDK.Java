@@ -13,7 +13,7 @@ Gereksinimler Java 17 ve Gradle 9.3.1. Wrapper, Gradle dağıtımını ilk kulla
 powershell -NoProfile -File .\ci.ps1 -JavaHome 'C:/Program Files/Java/jdk-17' -DependencyDir 'C:/sdk-dependencies' -PublishLocal
 ~~~
 
-`build`, JUnit sözleşme testlerini ve oluşturulan JAR'ı ayrı Java sürecinde yükleyen sürüm testini çalıştırır. `-PublishLocal` ile Maven dizini, POM, Gradle modül metadata'sı, çalışma zamanı, kaynak ve Javadoc JAR'ları `out/maven` altına yazılır. Uygulamanın tükettiği koordinat `com.stardataparadise:stardataparadise-jdbc:0.2.0`, bağımlılığı `com.google.code.gson:gson:2.13.2` olur. Java export istemcisi SDK 0.2.0 ile wire v1 sözleşmesinin sabitlenmiş SHA-256 değerini `SdkVersion` üzerinden okuyabilir.
+`build`, JUnit sözleşme testlerini ve oluşturulan JAR'ı ayrı Java sürecinde yükleyen sürüm testini çalıştırır. `-PublishLocal` ile Maven dizini, POM, Gradle modül metadata'sı, çalışma zamanı, kaynak ve Javadoc JAR'ları `out/maven` altına yazılır. Uygulamanın tükettiği koordinat `com.stardataparadise:stardataparadise-jdbc:0.3.0-preview.1`, bağımlılığı `com.google.code.gson:gson:2.13.2` olur. Java export istemcisi SDK 0.3.0-preview.1 ile wire v1 sözleşmesinin sabitlenmiş SHA-256 değerini `SdkVersion` üzerinden okuyabilir.
 
 Eclipse Buildship ile içe aktarmadan önce `SDP_SDK_DEPS` değişkenini Eclipse sürecine ver ve Gradle JVM olarak JDK 17'yi seç. **File → Import → Gradle → Existing Gradle Project** menüsünde depo kökünü ve Gradle Wrapper'ı kullan.
 
@@ -42,5 +42,6 @@ try (var connection = java.sql.DriverManager.getConnection("jdbc:sdp://127.0.0.1
 - `DECIMAL` için `BigDecimal`, tamsayı ondalıkları için `BigInteger`, saat dilimli zaman için `OffsetDateTime` veya `SdpValues.Timestamp` kullan. İkili girdiler `setBinaryStream` ve `setBytes` ile, çıktılar `getBinaryStream` ve `getBytes` ile taşınır. İç içe PL/SQL değerleri `SdpValues.RecordValue` ve `SdpValues.CollectionValue` olarak temsil edilir.
 - `setAutoCommit(false)` ile transaction aç, `setSavepoint`, `commit` ve `rollback` kullan. Bağlantıyı havuza vermeden önce `unwrap(SdpConnection.class).resetSession()` çağır ve hata durumunda bağlantıyı kapat.
 - `Statement.cancel()` bekleyen isteği iptal edip bağlantıyı kapatır. İzinli ayrı bir oturum `SdpConnection.cancelQuery` ile sunucudaki istek kimliğini hedefleyebilir.
+- Yeni MySQL tabanlı Server, ilgili hesaba `wire_sql_transactions_v1` bildirdiğinde JDBC `SELECT`, `INSERT`, `UPDATE` ve `DELETE` ifadelerini, autocommit ve `SERIALIZABLE` işlemleri destekler. Yazılacak InnoDB tablolarını MySQL tarafında oluştur. `wire_sql_basic_v1` ile JDBC autocommit okuması kullanılabilir.
 - Yazma veya commit cevabı kaybolduğunda `SdpException.isOutcomeUnknown()` ve `requestToken()` kontrol edilir. Yeni oturumdan `SdpConnection.transactionOutcome(token)` çağır. SDK yazmayı otomatik tekrarlamaz.
 - `SdpConnection` metadata, model tahmini, job durumu, Decision inceleme, History okuma ve yönetici sağlık verisini sunucudaki izinlerle sunar. Kaydırılabilir sonuç, batch, üretilen anahtar, XA ve diğer desteklenmeyen JDBC çağrıları `SQLFeatureNotSupportedException` üretir.

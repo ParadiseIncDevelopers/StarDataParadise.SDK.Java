@@ -64,7 +64,7 @@ public final class Acceptance {
     }
 
     private static void golden() throws Exception {
-        require("0.2.0".equals(SdkVersion.implementationVersion()), "installed JAR version");
+        require("0.3.0-preview.1".equals(SdkVersion.implementationVersion()), "installed JAR version");
         require(SdkVersion.CONTRACT_SHA256.equals(env("CONTRACT_SHA256")), "installed wire digest");
         try (var file = Files.newBufferedReader(Path.of(env("GOLDEN")))) {
             var decimal = JsonParser.parseReader(file).getAsJsonObject().getAsJsonObject("body")
