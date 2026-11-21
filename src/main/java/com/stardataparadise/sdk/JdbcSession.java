@@ -60,7 +60,7 @@ final class JdbcSession implements InvocationHandler {
 
     static SdpConnection connect(Wire wire, String url, String user, String password,
                                  int connectTimeout, int queryTimeout) throws SQLException {
-        var hello = wire.request("hello", Wire.object("client", "StarDataParadise JDBC 0.3.0-preview.1"),
+        var hello = wire.request("hello", Wire.object("client", "StarDataParadise JDBC 0.3.0"),
                 wire, connectTimeout, null);
         var auth = Wire.object("username", user, "password", password);
         try {

@@ -28,7 +28,7 @@ final class JdbcMetadata {
                 case "getDatabaseMajorVersion" -> version(session.serverVersion, 0);
                 case "getDatabaseMinorVersion" -> version(session.serverVersion, 1);
                 case "getDriverName" -> "StarDataParadise JDBC";
-                case "getDriverVersion" -> "0.3.0-preview.1";
+                case "getDriverVersion" -> "0.3.0";
                 case "getDriverMajorVersion" -> 0;
                 case "getDriverMinorVersion" -> 3;
                 case "getJDBCMajorVersion" -> 4;

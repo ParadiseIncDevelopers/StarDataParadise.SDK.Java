@@ -130,6 +130,11 @@ final class Wire implements AutoCloseable {
 
     JsonObject request(String op, JsonObject body, Object owner, int timeoutMs, String outcomeToken)
             throws SQLException {
+        return request(op,body,owner,timeoutMs,outcomeToken,false);
+    }
+
+    JsonObject request(String op, JsonObject body, Object owner, int timeoutMs, String outcomeToken, boolean uncertain)
+            throws SQLException {
         synchronized (requestLock) {
             if (closed) throw transport(1010, null);
             if (requestId == 0xffff_ffffL) { close(); throw transport(1010, null); }
@@ -179,20 +184,20 @@ final class Wire implements AutoCloseable {
                     String sqlState = requiredString(error, "sqlstate");
                     if (!sqlState.matches("[0-9A-Z]{5}")) throw new IOException("Invalid SQLSTATE");
                     String correlation = optionalString(error, "correlation_id");
-                    throw new SdpException(messageFor(code), sqlState, code, unknown, retryable,
+                    throw new SdpException(error.has("native_errno") ? requiredString(error,"message") : messageFor(code), sqlState, code, unknown, retryable,
                             unknown ? outcomeToken : null, correlation, optionalInt(error, "line"),
-                            optionalInt(error, "column"));
+                            optionalInt(error, "column"), error);
                 }
                 return requiredObject(message, "body");
             } catch (SocketTimeoutException error) {
                 close();
-                throw transport(1008, sent ? outcomeToken : null);
+                throw transport(1008, sent ? outcomeToken : null, sent && uncertain);
             } catch (IOException | RuntimeException error) {
                 close();
                 int reason = flight.cause.get();
                 if (reason == 0) reason = error instanceof java.io.EOFException
                         || error instanceof java.net.SocketException ? 1010 : 1001;
-                throw transport(reason, sent ? outcomeToken : null);
+                throw transport(reason, sent ? outcomeToken : null, sent && uncertain);
             } finally {
                 active.compareAndSet(flight, null);
                 alarm.cancel(false);
@@ -232,15 +237,21 @@ final class Wire implements AutoCloseable {
     }
 
     static JsonObject parse(byte[] bytes) throws IOException {
+        JsonElement value=parseValue(bytes);
+        if(!value.isJsonObject()) throw new IOException("Invalid JSON object");
+        return value.getAsJsonObject();
+    }
+
+    static JsonElement parseValue(byte[] bytes) throws IOException {
         String s = StandardCharsets.UTF_8.newDecoder().onMalformedInput(CodingErrorAction.REPORT)
                 .onUnmappableCharacter(CodingErrorAction.REPORT).decode(ByteBuffer.wrap(bytes)).toString();
         if (s.isEmpty() || s.charAt(0) == '\uFEFF') throw new IOException("Invalid JSON encoding");
         try (var reader = new JsonReader(new StringReader(s))) {
             reader.setStrictness(Strictness.STRICT);
             var value = read(reader, 0);
-            if (!value.isJsonObject() || reader.peek() != JsonToken.END_DOCUMENT)
+            if (reader.peek() != JsonToken.END_DOCUMENT)
                 throw new IOException("Invalid JSON object");
-            return value.getAsJsonObject();
+            return value;
         }
     }
 
@@ -279,7 +290,7 @@ final class Wire implements AutoCloseable {
         };
     }
 
-    private static void unicode(String value) throws IOException {
+    static void unicode(String value) throws IOException {
         for (int i = 0; i < value.length(); i++) {
             char unit = value.charAt(i);
             if (Character.isHighSurrogate(unit) && i + 1 < value.length()
@@ -339,6 +350,10 @@ final class Wire implements AutoCloseable {
     static SdpException malformed(String token) { return transport(1001, token); }
 
     private static SdpException transport(int code, String token) {
+        return transport(code,token,false);
+    }
+
+    private static SdpException transport(int code, String token, boolean uncertain) {
         String state = switch (code) {
             case 1008 -> "HYT00";
             case 1009 -> "57014";
@@ -346,7 +361,8 @@ final class Wire implements AutoCloseable {
             case 1011 -> "08001";
             default -> "08P01";
         };
-        return new SdpException(messageFor(code), state, code, token != null, false, token, null, 0, 0);
+        return new SdpException(messageFor(code), state, code, token != null || uncertain, false, token, null, 0, 0,
+                uncertain ? object("commit_state","unknown") : null);
     }
 
     private static String messageFor(int code) {

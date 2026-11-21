@@ -4,13 +4,13 @@ Java 17 uygulamalarını StarDataParadise Server’a TLS üzerinden wire v1 ile 
 
 ## Paketi ekleme
 
-Bu kaynak ağacının Maven koordinatı `com.stardataparadise:stardataparadise-jdbc:0.3.0-preview.1`. Paketi ve POM dosyasını içeren bir Maven deposu kullanın. Aşağıdaki kaynak derleme adımı Maven dizinini `out/maven` altında üretir. Sürücü çalışma zamanında Gson 2.13.2 kullanır.
+Bu kaynak ağacının Maven koordinatı `com.stardataparadise:stardataparadise-jdbc:0.3.0`. Paketi ve POM dosyasını içeren bir Maven deposu kullanın. Aşağıdaki kaynak derleme adımı Maven dizinini `out/maven` altında üretir. Sürücü çalışma zamanında Gson 2.13.2 kullanır.
 
 ```xml
 <dependency>
   <groupId>com.stardataparadise</groupId>
   <artifactId>stardataparadise-jdbc</artifactId>
-  <version>0.3.0-preview.1</version>
+  <version>0.3.0</version>
 </dependency>
 ```
 
@@ -43,6 +43,10 @@ Bir bağlantıda tek açık sunucu sonucu kullanın. Sonraki ifadeden önce sonu
 - `setAutoCommit(false)`, `setSavepoint`, `commit` ve `rollback` JDBC işlem akışını sağlar. `BigDecimal` kesin DECIMAL değerlerini, `setBytes` ve `getBytes` ikili veriyi taşır.
 - MySQL tabanlı uyumluluk servisinde `wire_sql_basic_v1` autocommit okumalarını, `wire_sql_transactions_v1` desteklenen InnoDB tablolarında CRUD ve işlemleri etkinleştirir. [Server uyumluluk servisi](https://github.com/ParadiseIncDevelopers/StarDataParadiseServer/tree/master/compatibility/wire_v1)
 - Yazma veya commit cevabı alınamazsa `SdpException.isOutcomeUnknown()` ve `requestToken()` değerlerini kontrol edin. Aynı hesapla yeni bağlantıdan `SdpConnection.transactionOutcome(token)` çağırın.
+
+## Native SQL ve AI kapsamı
+
+`SdpNativeConnection` ayrı bir native SQL/AI oturumu sağlar; kullanım örneği [BUILD.md](BUILD.md) içindedir. Yeni SQL `HIST`/SQLgit ve SQL `JOB` zamanlama özellikleri ertelenmiştir ve bu sürümde etkin değildir. Mevcut `SdpConnection.historyRead()` ve `jobStatus()` wire API'leri sunucunun capability/yetki kontrolleriyle korunur.
 
 ## Kaynaktan derleme ve test
 
