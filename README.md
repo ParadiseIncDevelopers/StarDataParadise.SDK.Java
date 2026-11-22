@@ -4,15 +4,26 @@ Java 17 uygulamalarını StarDataParadise Server’a TLS üzerinden wire v1 ile 
 
 ## Paketi ekleme
 
-Bu kaynak ağacının Maven koordinatı `com.stardataparadise:stardataparadise-jdbc:0.3.0`. Paketi ve POM dosyasını içeren bir Maven deposu kullanın. Aşağıdaki kaynak derleme adımı Maven dizinini `out/maven` altında üretir. Sürücü çalışma zamanında Gson 2.13.2 kullanır.
+Bu kaynak ağacının Maven koordinatı `io.github.paradiseincdevelopers:stardataparadise-jdbc:0.3.0`. Paketi ve POM dosyasını içeren bir Maven deposu kullanın. Aşağıdaki kaynak derleme adımı Maven dizinini `out/maven` altında üretir. Sürücü çalışma zamanında Gson 2.13.2 kullanır. Maven Central yayını tamamlanana kadar bu koordinatı yerel `out/maven` deposundan çözümleyin; aşağıdaki bağımlılık bildirimleri tek başına Central'da yayımlandığı anlamına gelmez.
 
 ```xml
 <dependency>
-  <groupId>com.stardataparadise</groupId>
+  <groupId>io.github.paradiseincdevelopers</groupId>
   <artifactId>stardataparadise-jdbc</artifactId>
   <version>0.3.0</version>
 </dependency>
 ```
+
+Gradle Kotlin DSL için:
+
+```kotlin
+dependencies {
+    implementation("io.github.paradiseincdevelopers:stardataparadise-jdbc:0.3.0")
+}
+```
+
+Java import adları `com.stardataparadise.sdk` olarak kalır. Maven Central için
+lisans, imzalama ve yükleme adımları [PUBLISHING.md](PUBLISHING.md) içindedir.
 
 ## İlk bağlantı
 
@@ -56,4 +67,4 @@ JDK 17, Gradle 9.3.1 ve doğrulanmış Gson ile JUnit JAR’ları gerekir. JAR a
 pwsh -NoProfile -File .\ci.ps1 -JavaHome 'C:/Program Files/Java/jdk-17' -DependencyDir 'C:/sdk-dependencies' -PublishLocal
 ```
 
-Betiğin `build` adımı sözleşme testlerini ve derlenen JAR’ın ayrı bir Java sürecinde yüklenmesini doğrular. `-PublishLocal` Maven tüketicileri için POM ve çalışma zamanı, kaynak ve Javadoc JAR’larını üretir. [JDBC API, testler ve Eclipse kurulumu](BUILD.md) · [Server ve diğer SDK’lar](https://github.com/ParadiseIncDevelopers/StarDataParadiseServer)
+Betik `build` adımında sözleşme testlerini ve derlenen JAR’ın ayrı bir Java sürecinde yüklenmesini doğrular. `-PublishLocal` Maven tüketicileri için POM, çalışma zamanı ve Javadoc JAR’larını üretir. `sources` JAR'ı yalnızca açıklayıcı README içerir; Java uygulama kaynaklarını içermez. [JDBC API, testler ve Eclipse kurulumu](BUILD.md) · [Server ve diğer SDK’lar](https://github.com/ParadiseIncDevelopers/StarDataParadiseServer)

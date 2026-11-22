@@ -3,18 +3,30 @@ import java.security.MessageDigest
 plugins {
     id 'java-library'
     id 'maven-publish'
+    id 'signing'
 }
 
 if (gradle.gradleVersion != '9.3.1') throw new GradleException('Use Gradle 9.3.1.')
 
-group = 'com.stardataparadise'
+group = 'io.github.paradiseincdevelopers'
 version = '0.3.0'
 layout.buildDirectory = layout.projectDirectory.dir('out/build')
 
 java {
     toolchain { languageVersion = JavaLanguageVersion.of(17) }
-    withSourcesJar()
     withJavadocJar()
+}
+
+def sdkLicenseName = providers.gradleProperty('sdpLicenseName')
+        .orElse(providers.environmentVariable('SDP_SDK_LICENSE_NAME')).orNull?.trim()
+def sdkLicenseUrl = providers.gradleProperty('sdpLicenseUrl')
+        .orElse(providers.environmentVariable('SDP_SDK_LICENSE_URL')).orNull?.trim()
+def signRelease = providers.gradleProperty('sdpSign').map { it.toBoolean() }.getOrElse(false)
+if ((sdkLicenseName && !sdkLicenseUrl) || (sdkLicenseUrl && !sdkLicenseName)) {
+    throw new GradleException('Supply both the approved SDK license name and URL; see PUBLISHING.md.')
+}
+if (signRelease && (!sdkLicenseName || !sdkLicenseUrl)) {
+    throw new GradleException('A signed release requires the approved SDK license name and URL; see PUBLISHING.md.')
 }
 
 def dependencyRoot = providers.gradleProperty('sdpDependencyDir')
@@ -66,6 +78,11 @@ tasks.named('jar', Jar) {
     }
 }
 
+tasks.register('sourcesJar', Jar) {
+    archiveClassifier = 'sources'
+    from('publishing/SOURCES_README.md') { rename { 'README.md' } }
+}
+
 tasks.named('test') {
     useJUnitPlatform()
     testLogging { events 'passed', 'failed', 'skipped' }
@@ -98,10 +115,33 @@ publishing {
     publications {
         sdk(MavenPublication) {
             from components.java
+            artifact tasks.named('sourcesJar')
             artifactId = 'stardataparadise-jdbc'
             pom {
                 name = 'StarDataParadise JDBC'
                 description = 'Java 17 JDBC driver for StarDataParadise Server wire v1'
+                url = 'https://github.com/ParadiseIncDevelopers/StarDataParadise.SDK.Java'
+                if (sdkLicenseName && sdkLicenseUrl) {
+                    licenses {
+                        license {
+                            name = sdkLicenseName
+                            url = sdkLicenseUrl
+                            distribution = 'repo'
+                        }
+                    }
+                }
+                developers {
+                    developer {
+                        id = 'ParadiseIncDevelopers'
+                        name = 'ParadiseIncDevelopers'
+                        url = 'https://github.com/ParadiseIncDevelopers'
+                    }
+                }
+                scm {
+                    connection = 'scm:git:https://github.com/ParadiseIncDevelopers/StarDataParadise.SDK.Java.git'
+                    developerConnection = 'scm:git:ssh://git@github.com/ParadiseIncDevelopers/StarDataParadise.SDK.Java.git'
+                    url = 'https://github.com/ParadiseIncDevelopers/StarDataParadise.SDK.Java'
+                }
             }
         }
     }
@@ -110,6 +150,41 @@ publishing {
             name = 'sdkArtifacts'
             url = layout.projectDirectory.dir('out/maven')
         }
+    }
+}
+
+if (signRelease) {
+    signing {
+        useGpgCmd()
+        sign publishing.publications.sdk
+    }
+}
+
+def centralRepositoryPath = "${project.group.toString().replace('.', '/')}/stardataparadise-jdbc/${project.version}"
+def centralBaseName = "stardataparadise-jdbc-${project.version}"
+def centralPayloads = ['.jar', '.pom', '-sources.jar', '-javadoc.jar', '.module'].collect { centralBaseName + it }
+def centralFiles = centralPayloads.collectMany { name ->
+    ['', '.asc', '.md5', '.sha1'].collect { suffix -> "${centralRepositoryPath}/${name}${suffix}" }
+}
+
+def validateCentralRelease = tasks.register('validateCentralRelease') {
+    doLast {
+        if (!signRelease) {
+            throw new GradleException('Central uploads require -PsdpSign=true, an approved SDK license and GPG signing; see PUBLISHING.md.')
+        }
+    }
+}
+
+tasks.register('centralBundle', Zip) {
+    group = 'publishing'
+    description = 'Builds the signed Maven Central upload ZIP; requires an approved license and local GPG key.'
+    dependsOn validateCentralRelease, tasks.named('check'), tasks.named('publishSdkPublicationToSdkArtifactsRepository')
+    archiveFileName = "${centralBaseName}-central.zip"
+    destinationDirectory = layout.projectDirectory.dir('out/central')
+    from(layout.projectDirectory.dir('out/maven')) { include centralFiles }
+    doFirst {
+        def missing = centralFiles.findAll { !layout.projectDirectory.file("out/maven/${it}").asFile.isFile() }
+        if (missing) throw new GradleException('Missing Central bundle files: ' + missing.join(', '))
     }
 }
 
