@@ -1,0 +1,86 @@
+name: Build Java SDK Maven package
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - 'LICENSE'
+      - 'build.gradle'
+      - 'gradle/**'
+      - 'gradlew'
+      - 'gradle.properties'
+      - 'settings.gradle'
+      - 'src/**'
+      - 'publishing/**'
+      - '.github/workflows/build-java-sdk.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  package:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Download pinned build dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/sdp-sdk-deps"
+          curl -fLsS --retry 3 https://repo.maven.apache.org/maven2/com/google/code/gson/gson/2.13.2/gson-2.13.2.jar -o "$RUNNER_TEMP/sdp-sdk-deps/gson-2.13.2.jar"
+          curl -fLsS --retry 3 https://repo.maven.apache.org/maven2/org/junit/platform/junit-platform-console-standalone/1.13.4/junit-platform-console-standalone-1.13.4.jar -o "$RUNNER_TEMP/sdp-sdk-deps/junit-platform-console-standalone-1.13.4.jar"
+          cd "$RUNNER_TEMP/sdp-sdk-deps"
+          printf '%s  %s\n' dd0ce1b55a3ed2080cb70f9c655850cda86c206862310009dcb5e5c95265a5e0 gson-2.13.2.jar 3fdfc37e29744a9a67dd5365e81467e26fbde0b7aa204e6f8bbe79eeaa7ae892 junit-platform-console-standalone-1.13.4.jar | sha256sum -c -
+      - name: Build, test and publish to local Maven repository
+        env:
+          SDP_SDK_DEPS: ${{ runner.temp }}/sdp-sdk-deps
+        shell: bash
+        run: |
+          set -euo pipefail
+          ./gradlew --no-daemon --offline clean check publishSdkPublicationToSdkArtifactsRepository
+      - name: Validate artifacts, embedded license and create Maven repository ZIP
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          from zipfile import ZipFile, ZIP_DEFLATED
+          import hashlib
+          import xml.etree.ElementTree as ET
+
+          root = Path("out/maven/io/github/paradiseincdevelopers/stardataparadise-jdbc/0.3.0")
+          prefix = "stardataparadise-jdbc-0.3.0"
+          license_text = Path("LICENSE").read_bytes()
+          assert len(license_text) > 400
+          for suffix in (".jar", "-sources.jar"):
+              with ZipFile(root / (prefix + suffix)) as jar:
+                  assert jar.read("META-INF/LICENSE") == license_text, suffix
+                  if suffix == "-sources.jar":
+                      assert not any(n.endswith(".java") for n in jar.namelist()), "Source leak"
+          pom = (root / (prefix + ".pom")).read_text()
+          assert "<groupId>io.github.paradiseincdevelopers</groupId>" in pom
+          assert "<artifactId>stardataparadise-jdbc</artifactId>" in pom
+          assert "<name>StarDataParadise SDK Free-Use License 1.0</name>" in pom
+          assert "/blob/master/LICENSE" in pom
+          assert "<artifactId>gson</artifactId>" in pom
+          assert (root / (prefix + "-javadoc.jar")).exists()
+          out = Path("out/central-preview") / (prefix + "-maven-local.zip")
+          out.parent.mkdir(parents=True, exist_ok=True)
+          with ZipFile(out, "w", ZIP_DEFLATED) as z:
+              for f in sorted(Path("out/maven").rglob("*")):
+                  if f.is_file():
+                      z.write(f, f.relative_to("out/maven"))
+          print("Maven/Gradle local release:", out)
+          print("SHA256:", hashlib.sha256(out.read_bytes()).hexdigest())
+          print("Files:", len(list(root.iterdir())))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: stardataparadise-jdbc-0.3.0-maven-local
+          path: out/central-preview/stardataparadise-jdbc-0.3.0-maven-local.zip
+          if-no-files-found: error
+          retention-days: 30

@@ -7,9 +7,7 @@ Maven ve Gradle aynı Central yayınını tüketir; iki ayrı yükleme yapılmaz
 ## Ön koşullar
 
 - Central Portal'da `io.github.paradiseincdevelopers` namespace'i doğrulanmış olmalıdır.
-- SDK sahibinin onayladığı gerçek dağıtım lisansı ve bu lisansın URL'si gerekir.
-  Bu depo kendiliğinden MIT, Apache veya başka bir lisans atamaz. Lisans adı ve
-  URL'si verilmeden yerel derleme yapılabilir; imzalı yayın hazırlanamaz.
+- SDK için `LICENSE` dosyasındaki **StarDataParadise SDK Free-Use License 1.0** geçerlidir. Lisans, ana JAR içinde `META-INF/LICENSE`, kaynak arşivinde `META-INF/LICENSE` ve Maven POM içinde doğrulanabilir [GitHub LICENSE](https://github.com/ParadiseIncDevelopers/StarDataParadise.SDK.Java/blob/master/LICENSE) bağlantısı olarak yer alır. Bu lisans, Server'ın MIT lisansından ayrıdır ve kaynak kodunu açık kaynak yapmaz. Hukuki gözden geçirme ve hak sahibinin onayı önerilir.
 - Yayıncıya ait PGP imzalama anahtarı gerekir. Özel anahtar ve parolası depoya
   konmaz. Açık anahtar Sonatype'ın desteklediği bir anahtar sunucusunda erişilebilir
   olmalıdır. GPG kimliği ve açık anahtar yayımla birlikte kamuya açık olur.
@@ -47,14 +45,9 @@ kabul testinin yerine geçmez.
 
 ## İmzalı yükleme arşivi
 
-Yalnızca gerçek lisans seçilip URL'si yayımlandıktan ve uygun GPG anahtarı yerelde
-kurulduktan sonra çalıştırın. Aşağıdaki ortam değişkenlerinin değerleri örnek
-lisans değil, yayıncı tarafından sağlanan gerçek lisans adı ve URL'si olmalıdır:
+SDK lisansı doğrudan depodaki `LICENSE` dosyasına gömülüdür; lisans ortam değişkenleri gerekmez. Uygun yayıncı GPG anahtarı yerelde kurulduktan ve ücretsiz yayın uygunluğu doğrulandıktan sonra çalıştırın:
 
 ```powershell
-if (-not $env:SDP_SDK_LICENSE_NAME -or -not $env:SDP_SDK_LICENSE_URL) {
-    throw 'Onaylanmış SDK lisans adı ve URL ortam değişkenlerini ayarlayın.'
-}
 .\gradlew.bat --offline centralBundle -PsdpSign=true
 if ($LASTEXITCODE) { throw 'İmzalama veya Central arşivi hazırlanamadı.' }
 ```
@@ -63,8 +56,7 @@ if ($LASTEXITCODE) { throw 'İmzalama veya Central arşivi hazırlanamadı.' }
 GPG, sistemdeki imzalama anahtarını ve normal parola istemini kullanır.
 Birden fazla anahtar varsa kullanıcıya ait Gradle ayarlarında
 `signing.gnupg.keyName` ile doğru anahtar parmak izini seçin. Bu ayarları veya
-parolayı proje deposuna eklemeyin. Gradle lisans özellikleri
-`sdpLicenseName` ve `sdpLicenseUrl`, yukarıdaki ortam değişkenlerine alternatiftir.
+parolayı proje deposuna eklemeyin. SDK lisansı ve POM lisans URL'si `build.gradle` ve kök `LICENSE` dosyasında tanımlıdır.
 
 `centralBundle`, testleri ve yerel yayını çalıştırır. İmzalama etkin değilse veya
 zorunlu dosyalar eksikse yüklenebilir ZIP üretmez. Arşivin yolu:
@@ -102,3 +94,13 @@ deposunu ve README'deki bağımlılığı kullanır. Maven Central'da yayımlanm
 
 [Resmî elle yükleme kılavuzu](https://central.sonatype.org/publish/publish-portal-upload/)
 · [Gradle GPG imzalama](https://docs.gradle.org/current/userguide/signing_plugin.html#sec:using_gpg_agent)
+
+## Ücretsiz yerel paket (imzasız)
+
+Ücretli Central aboneliği veya yayıncıya ait GPG anahtarı gerektirmeyen, **yerel Maven deposu** olarak kullanılabilen bir paket üretilebilir:
+
+```powershell
+pwsh -NoProfile -File .\ci.ps1 -JavaHome 'C:/Program Files/Java/jdk-17' -DependencyDir 'C:/sdk-dependencies' -PublishLocal
+```
+
+`.github/workflows/build-java-sdk.yml` GitHub Actions iş akışı, Java 17 ile testleri ve yerel Maven dağıtımını üretir. Çıktı `stardataparadise-jdbc-0.3.0-maven-local.zip` olarak workflow artifact'ine eklenir. Bu dosya **Maven Central'a yüklemeye uygun imzalı paket değildir**. Maven Central yüklemesi için ayrıca yayıncıya ait GPG imzaları ve koşul incelemesi gereklidir.

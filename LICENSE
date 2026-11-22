@@ -1,0 +1,82 @@
+StarDataParadise SDK Free-Use License, Version 1.0
+Effective date: 22 November 2026
+
+Copyright (c) 2026 Paradise Bilisim Tic. Ltd. Sti. (ParadiseIncDevelopers).
+All rights reserved except as expressly licensed below.
+
+1. Scope and definitions
+This license governs copies of the StarDataParadise Java SDK/JDBC driver
+(the "SDK") made available by the copyright holder (the "Licensor") with
+this license. It does not govern StarDataParadise Server, Community
+Extensions, Enterprise, Cloud or third-party software, each of which may
+be subject to separate terms. "Binary" means the compiled SDK JAR and
+other non-source distributions supplied with this license.
+
+2. No-cost permission to use and redistribute the binary
+Subject to the conditions below, the Licensor grants you a worldwide,
+non-exclusive, royalty-free license to download, install, run, make
+reasonable backup copies of, and use the unmodified SDK Binary in
+personal, educational, internal business and commercial applications.
+You may distribute the unmodified Binary with applications or through
+software package repositories, including to customers, at no separate
+SDK license charge, provided that you preserve all copyright and
+attribution notices and include this complete license text with every
+copy or distribution. You may charge for your own applications and
+services; that does not confer a right to sell the SDK Binary as a
+standalone proprietary product or claim ownership of it.
+
+3. Source code and modifications
+This license is a free-use BINARY license, not an open-source license.
+No right to modify, adapt, publish, sublicense, or redistribute the
+SDK's implementation source code is granted. Public availability of
+source files, if any, does not itself expand these permissions.
+You must not modify the Binary or create derivative SDK libraries,
+except to the extent expressly required by applicable law. You may
+use public SDK APIs to build your own applications and integrations.
+You must not remove copyright notices, falsely claim authorship, or
+misrepresent the SDK's origin.
+
+4. Separate products and services
+This license does not grant access to, or any license for, Enterprise
+features, hosted Cloud services, proprietary server components,
+credentials, technical support, service-level agreements or other
+separately licensed offerings. Your use of such offerings, if any,
+requires the corresponding separate authorization.
+
+5. Trademarks and third-party components
+No trademark or endorsement rights are granted. Names and marks of
+StarDataParadise, Paradise Bilişim and ParadiseIncDevelopers remain
+with their respective owners. Third-party dependencies, such as Gson,
+remain governed by their own licenses. Nothing in this license limits
+any rights that third-party licenses independently grant you.
+
+6. Warranty disclaimer
+THE SDK IS PROVIDED "AS IS" AND "AS AVAILABLE" WITHOUT WARRANTIES
+OF ANY KIND, WHETHER EXPRESS OR IMPLIED, INCLUDING MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE, TITLE OR NON-INFRINGEMENT, TO THE
+MAXIMUM EXTENT PERMITTED BY APPLICABLE LAW. THIS SECTION DOES NOT
+EXCLUDE WARRANTIES THAT CANNOT LAWFULLY BE EXCLUDED.
+
+7. Liability
+TO THE MAXIMUM EXTENT PERMITTED BY APPLICABLE LAW, THE LICENSOR SHALL
+NOT BE LIABLE FOR INDIRECT, INCIDENTAL, SPECIAL, CONSEQUENTIAL OR
+PUNITIVE DAMAGES ARISING FROM USE OF THE SDK, INCLUDING LOSS OF DATA,
+PROFITS OR BUSINESS. NOTHING EXCLUDES LIABILITY WHICH CANNOT LAWFULLY
+BE EXCLUDED OR LIMITED.
+
+8. Termination and prior versions
+The license rights granted to you end if you materially breach this
+license and do not remedy the breach within 30 days after receiving
+written notice. Upon termination, stop using and distributing the SDK
+Binary and remove unlicensed copies. Later license versions do not
+retroactively reduce rights validly granted for copies obtained under
+this version. Provisions that by their nature must survive shall do so.
+
+9. Permission and notices
+You may retain this license in application documentation or legal
+notices when redistributing the SDK. If you distribute the Binary in a
+Maven/Gradle artifact, include this text inside the JAR under
+META-INF/LICENSE or in an accompanying conspicuous license file.
+
+This license covers only the software identified above and is not a
+license for the Server's separately licensed code.

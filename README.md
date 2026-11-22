@@ -25,6 +25,10 @@ dependencies {
 Java import adları `com.stardataparadise.sdk` olarak kalır. Maven Central için
 lisans, imzalama ve yükleme adımları [PUBLISHING.md](PUBLISHING.md) içindedir.
 
+## Lisans
+
+Java SDK, ücretsiz ve ticari kullanım ile lisans bildirimini korumak koşuluyla değiştirilmeyen ikili dağıtım için [StarDataParadise SDK Free-Use License 1.0](LICENSE) altında sunulur. Bu, açık kaynak yazılım lisansı değildir; Server ve Enterprise/Cloud ürünleri kendi koşullarına tabidir. Lisans ana JAR dosyasının `META-INF/LICENSE` yoluna da gömülüdür. Paketleme ve imza işlemleri için [PUBLISHING.md](PUBLISHING.md) dosyasına bakın.
+
 ## İlk bağlantı
 
 `jdbc:sdp://host[:port]` biçimini kullanın. Örnekte `items` tablosundaki `id` ve `note` sütunlarına okuma yetkisi gerekir. `SDP_USER`, `SDP_PASSWORD` ve CA PEM dosyasına işaret eden `SDP_CA` ortam değişkenlerini sağlayın. `tlsName` sunucu sertifikasının adıyla eşleşmeli.

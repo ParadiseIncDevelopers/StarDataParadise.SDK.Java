@@ -17,17 +17,12 @@ java {
     withJavadocJar()
 }
 
-def sdkLicenseName = providers.gradleProperty('sdpLicenseName')
-        .orElse(providers.environmentVariable('SDP_SDK_LICENSE_NAME')).orNull?.trim()
-def sdkLicenseUrl = providers.gradleProperty('sdpLicenseUrl')
-        .orElse(providers.environmentVariable('SDP_SDK_LICENSE_URL')).orNull?.trim()
+// The SDK license is distributed with every binary and documented in the POM.
+// Do not silently substitute the Server (MIT) license for the Java SDK.
+def sdkLicenseName = 'StarDataParadise SDK Free-Use License 1.0'
+def sdkLicenseUrl = 'https://github.com/ParadiseIncDevelopers/StarDataParadise.SDK.Java/blob/master/LICENSE'
 def signRelease = providers.gradleProperty('sdpSign').map { it.toBoolean() }.getOrElse(false)
-if ((sdkLicenseName && !sdkLicenseUrl) || (sdkLicenseUrl && !sdkLicenseName)) {
-    throw new GradleException('Supply both the approved SDK license name and URL; see PUBLISHING.md.')
-}
-if (signRelease && (!sdkLicenseName || !sdkLicenseUrl)) {
-    throw new GradleException('A signed release requires the approved SDK license name and URL; see PUBLISHING.md.')
-}
+if (!file('LICENSE').isFile()) throw new GradleException('SDK LICENSE file is required.')
 
 def dependencyRoot = providers.gradleProperty('sdpDependencyDir')
         .orElse(providers.environmentVariable('SDP_SDK_DEPS'))
@@ -71,6 +66,7 @@ tasks.withType(AbstractArchiveTask).configureEach {
 }
 
 tasks.named('jar', Jar) {
+    from('LICENSE') { into('META-INF') }
     manifest {
         attributes('Implementation-Version': project.version,
                 'Implementation-Title': 'StarDataParadise JDBC Driver',
@@ -80,6 +76,7 @@ tasks.named('jar', Jar) {
 
 tasks.register('sourcesJar', Jar) {
     archiveClassifier = 'sources'
+    from('LICENSE') { into('META-INF') }
     from('publishing/SOURCES_README.md') { rename { 'README.md' } }
 }
 
