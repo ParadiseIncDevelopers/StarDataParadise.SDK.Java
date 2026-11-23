@@ -27,7 +27,7 @@ lisans, imzalama ve yükleme adımları [PUBLISHING.md](PUBLISHING.md) içindedi
 
 ## Lisans
 
-Java SDK, ücretsiz ve ticari kullanım ile lisans bildirimini korumak koşuluyla değiştirilmeyen ikili dağıtım için [StarDataParadise SDK Free-Use License 1.0](LICENSE) altında sunulur. Bu, açık kaynak yazılım lisansı değildir; Server ve Enterprise/Cloud ürünleri kendi koşullarına tabidir. Lisans ana JAR dosyasının `META-INF/LICENSE` yoluna da gömülüdür. Paketleme ve imza işlemleri için [PUBLISHING.md](PUBLISHING.md) dosyasına bakın.
+Java SDK, ücretsiz ve ticari kullanım ile lisans bildirimini korumak koşuluyla değiştirilmeyen ikili dağıtım için [StarDataParadise SDK Free-Use License 1.0](LICENSE) altında sunulur. Bu, açık kaynak yazılım lisansı değildir; Server ve Enterprise/Cloud ürünleri kendi koşullarına tabidir. Lisans ana JAR dosyasının `META-INF/LICENSE` yoluna da gömülüdür. Özgün SDK ile Gson ve diğer bağımlılıkların ayrı lisans kapsamları [LICENSING.md](LICENSING.md) dosyasında açıklanır. Paketleme ve imza işlemleri için [PUBLISHING.md](PUBLISHING.md) dosyasına bakın.
 
 ## İlk bağlantı
 
